@@ -1,0 +1,188 @@
+"use client";
+
+import { imgPath } from "@/lib/kyp/image-path";
+import Link from "next/link";
+import { ArrowUp, Github, Mail } from "lucide-react";
+import { Container } from "@/components/kyp/ui/container";
+import { Reveal } from "@/components/kyp/ui/reveal";
+
+const footerLinks = [
+  {
+    title: "Medications",
+    links: [
+      { label: "Sertraline", href: "/drugs/sertraline" },
+      { label: "Fluoxetine", href: "/drugs/fluoxetine" },
+      { label: "Escitalopram", href: "/drugs/escitalopram" },
+      { label: "Bupropion", href: "/drugs/bupropion" },
+    ],
+  },
+  {
+    title: "Substance Use",
+    links: [
+      { label: "Alcohol", href: "/substances/alcohol" },
+      { label: "Opioids", href: "/substances/opioids" },
+      { label: "Cannabis", href: "/substances/cannabis" },
+    ],
+  },
+  {
+    title: "Clinical",
+    links: [
+      { label: "Major Depressive Disorder", href: "/diseases/major-depressive-disorder" },
+      // Real destinations — the emergency and FAQ sections live on the
+      // homepage; rendering them through next/link prepends the GitHub
+      // Pages basePath, so they work from every page.
+      { label: "Emergency Help", href: "/#emergency" },
+      { label: "FAQ", href: "/#faq" },
+    ],
+  },
+  {
+    title: "Platform",
+    links: [
+      { label: "Learn", href: "/learn" },
+      { label: "Study Mode", href: "/study" },
+      { label: "Medications", href: "/#library" },
+      { label: "Substance Use", href: "/#substances" },
+      { label: "Emergency", href: "/#emergency" },
+      { label: "Terms & Copyright", href: "/legal/terms" },
+    ],
+  },
+];
+
+export function Footer() {
+  return (
+    <footer className="mt-auto relative overflow-hidden border-t border-border/20">
+      {/* Very subtle end-of-page organic shape */}
+      <div className="pointer-events-none absolute inset-0" aria-hidden>
+        <div
+          className="absolute left-1/2 -translate-x-1/2 -bottom-[30%] h-[40vh] w-[80vh] rounded-full opacity-[0.03] blur-[120px]"
+          style={{ background: "radial-gradient(circle, oklch(0.55 0.11 195), transparent 70%)" }}
+        />
+      </div>
+
+      <Container className="relative py-20">
+        <Reveal>
+          {/* Massive closing typography */}
+          <p
+            className="font-serif font-bold text-muted-foreground/[0.06] tracking-[-0.04em] leading-none mb-16 select-none"
+            style={{ fontSize: "clamp(3rem, 12vw, 8rem)" }}
+          >
+            Know Your Pill
+          </p>
+
+          {/* Links — minimal grid */}
+          <div className="grid grid-cols-2 gap-8 sm:grid-cols-4 mb-12">
+            {footerLinks.map((col) => (
+              <div key={col.title}>
+                <h3 className="text-overline text-muted-foreground mb-4">{col.title}</h3>
+                <ul className="space-y-2">
+                  {col.links.map((link) => (
+                    <li key={link.label}>
+                      {link.href.startsWith("#") ? (
+                        <a
+                          href={link.href}
+                          className="text-body-sm text-foreground/50 transition-colors hover:text-brand"
+                        >
+                          {link.label}
+                        </a>
+                      ) : (
+                        <Link
+                          href={link.href}
+                          className="text-body-sm text-foreground/50 transition-colors hover:text-brand"
+                        >
+                          {link.label}
+                        </Link>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          {/* Bottom — minimal */}
+          <div className="flex flex-col gap-6 border-t border-border/15 pt-8">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <span className="relative h-8 w-8 shrink-0 overflow-hidden rounded-lg">
+                  <img
+                    src={imgPath("/logo-navy-128.png")}
+                    alt="Know Your Pill logo"
+                    className="h-full w-full object-contain"
+                  />
+                </span>
+                <div className="flex items-center gap-2">
+                  <a
+                    href="https://github.com/zammucanva/know-your-pill-2026"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="GitHub repository"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-brand"
+                  >
+                    <Github className="h-4 w-4" />
+                  </a>
+                  <a
+                    href="mailto:zammucanva@gmail.com"
+                    aria-label="Email contact"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-brand"
+                  >
+                    <Mail className="h-4 w-4" />
+                  </a>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <p className="text-caption text-muted-foreground">
+                  © 2026 Know Your Pill · Zamaan Ali Shamji ·{" "}
+                  <Link
+                    href="/legal/terms"
+                    className="underline decoration-border underline-offset-2 transition-colors hover:text-brand hover:decoration-brand"
+                  >
+                    Terms &amp; Copyright
+                  </Link>
+                </p>
+                {/* Page-local back-to-top — a real control, not an anchor
+                    to an id that most pages don't have. Smooth scroll
+                    unless the user prefers reduced motion. */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const reduceMotion = window
+                      .matchMedia("(prefers-reduced-motion: reduce)")
+                      .matches;
+                    window.scrollTo({
+                      top: 0,
+                      behavior: reduceMotion ? "auto" : "smooth",
+                    });
+                  }}
+                  aria-label="Back to top of page"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border/50 px-3 text-caption text-muted-foreground transition-colors hover:border-brand/40 hover:text-brand"
+                >
+                  <ArrowUp className="h-3.5 w-3.5" aria-hidden />
+                  Back to top
+                </button>
+              </div>
+            </div>
+
+            <p className="text-caption text-muted-foreground/50 leading-relaxed max-w-3xl">
+              <strong className="text-muted-foreground">Copyright:</strong>{" "}
+              © 2026 Zamaan Ali Shamji. All content on this site — including
+              drug pages, disease modules, and educational text — is protected
+              by copyright and may not be reproduced, republished, or
+              redistributed without written permission. See{" "}
+              <Link
+                href="/legal/terms"
+                className="underline decoration-border underline-offset-2 transition-colors hover:text-brand hover:decoration-brand"
+              >
+                Terms &amp; Copyright
+              </Link>{" "}
+              for permitted use.
+            </p>
+
+            <p className="text-caption text-muted-foreground/50 leading-relaxed max-w-3xl">
+              <strong className="text-muted-foreground">Disclaimer:</strong> This website is for educational support only. It does not replace a doctor, pharmacist, emergency service, or local medical guideline. Always consult a qualified healthcare professional before making decisions about medication or substance use.
+            </p>
+          </div>
+        </Reveal>
+      </Container>
+    </footer>
+  );
+}

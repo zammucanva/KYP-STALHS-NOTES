@@ -1,0 +1,156 @@
+// KYP Prisma Schema — User authentication, onboarding, progress tracking,
+// bookmarks, and search history.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  passwordHash  String
+  emailVerified Boolean   @default(false)
+  role          String    @default("student") // patient | student | medical_resident | medical_student | psychiatrist (legacy: mbbs_student | exam_aspirant | psychiatry_resident | healthcare_professional)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  progress      Progress[]
+  bookmarks     Bookmark[]
+  searchHistory SearchHistory[]
+  sessions      Session[]
+  passwordResets PasswordResetToken[]
+}
+
+/// Server-side session records for the hardened authentication system.
+/// The browser cookie holds ONLY an opaque signed token. This table stores
+/// the SHA-256 hash of that token — raw tokens are never persisted.
+/// Sessions support expiry, revocation, and fixation resistance (every
+/// login issues a brand-new random token).
+model Session {
+  id         String    @id @default(cuid())
+  /// SHA-256 hex digest of the full signed cookie token
+  tokenHash  String    @unique
+  userId     String
+  createdAt  DateTime  @default(now())
+  expiresAt  DateTime
+  /// Set on logout — the token is rejected even if still time-valid
+  revokedAt  DateTime?
+  lastUsedAt DateTime?
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+/// Single-use password reset tokens.
+/// The database stores ONLY the SHA-256 hash of the raw token — raw tokens
+/// exist solely in the delivery channel (email provider or verified operator
+/// process) and are never persisted, never logged, and never returned by the
+/// API in responses. Tokens expire quickly (default 30 minutes), are strictly
+/// single-use (usedAt), and requesting a new token invalidates all previous
+/// outstanding tokens for the account.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  /// SHA-256 hex of the raw reset token (never the raw token itself)
+  tokenHash String    @unique
+  userId    String
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  /// Set when the token is consumed — a used token can never reset again
+  usedAt    DateTime?
+  /// SHA-256 hex of the requesting client source (audit dimension only;
+  /// raw IP addresses are never stored)
+  sourceHash String?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+/// Login attempt counters backing the login rate limiter / temporary lockout.
+/// Rows are keyed by (identifierHash, sourceHash):
+///   - account dimension: (sha256(email), "*")
+///   - account+source:     (sha256(email), sha256(source))
+///   - source dimension:   ("*", sha256(source))
+/// Raw emails and IP addresses are NEVER stored — only SHA-256 hashes.
+/// Lockouts are temporary with bounded escalation and automatic expiry;
+/// there is no permanent lock.
+model LoginAttempt {
+  id              String    @id @default(cuid())
+  /// SHA-256 hex of the normalized login identifier ("*" = any account)
+  identifierHash  String
+  /// SHA-256 hex of the client source ("*" = any source)
+  sourceHash      String
+  failureCount    Int       @default(0)
+  windowStart     DateTime  @default(now())
+  lastFailureAt   DateTime  @default(now())
+  /// While set and in the future, logins for this dimension are blocked
+  lockoutUntil    DateTime?
+  /// Bounded escalation level — each consecutive lockout doubles the next
+  /// duration, capped at maxLockoutMs
+  escalationLevel Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([identifierHash, sourceHash])
+  @@index([identifierHash, lastFailureAt])
+  @@index([sourceHash, lastFailureAt])
+}
+
+/// Tracks when a user last visited a drug, substance, or disease page.
+/// Each (userId, slug, type) combination is unique — revisiting a page
+/// updates lastVisitedAt rather than creating a new row.
+model Progress {
+  id            String   @id @default(cuid())
+  userId        String
+  /// "drug" | "substance" | "disease"
+  type          String
+  /// URL slug, e.g. "sertraline", "alcohol", "major-depressive-disorder"
+  slug          String
+  /// Human-readable title for display without joining to content data
+  title         String
+  lastVisitedAt DateTime @default(now())
+  /// How many times the user has visited this page (incremented on each visit)
+  visitCount    Int      @default(1)
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type, slug])
+  @@index([userId, lastVisitedAt])
+}
+
+/// User-saved bookmarks for drugs, substances, diseases, or any content page.
+model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  slug      String
+  title     String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type, slug])
+  @@index([userId, createdAt])
+}
+
+/// Recent search queries for autocomplete / "recent searches" display.
+/// Auto-trimmed to ~50 entries per user (oldest deleted when limit exceeded).
+model SearchHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  query     String
+  /// What the user clicked on after searching (optional — null if they didn't click)
+  resultType String?
+  resultSlug String?
+  resultTitle String?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
